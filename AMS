@@ -1,0 +1,322 @@
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Save, MessageSquare, ClipboardList } from 'lucide-react';
+
+const AuditionManagementSystem = () => {
+  const [auditions, setAuditions] = useState([]);
+  const [showRecap, setShowRecap] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    auditionNumber: '',
+    instrument: '',
+    comments: '',
+    scores: {
+      chromPitch: '',
+      chromRange: '',
+      chromTempo: '',
+      chromRhythm: '',
+      chromToneTechnique: '',
+      srTone: '',
+      srTempoRhythm: '',
+      srPitchAccuracy: '',
+      srArticulation: '',
+      srMusicality: ''
+    }
+  });
+
+  const [isCommentsExpanded, setIsCommentsExpanded] = useState(false);
+
+  const instruments = [
+    'Flute', 'Clarinet', 'Bass Clarinet', 'Alto Saxophone', 'Tenor Saxophone',
+    'Baritone Saxophone', 'Trumpet', 'French Horn', 'Trombone', 'Euphonium',
+    'Tuba', 'Percussion'
+  ];
+
+  const scoreCategories = [
+    { id: 'chromPitch', label: 'Chromatic Pitch Accuracy' },
+    { id: 'chromRange', label: 'Chromatic Range' },
+    { id: 'chromTempo', label: 'Chromatic Tempo' },
+    { id: 'chromRhythm', label: 'Chromatic Rhythm' },
+    { id: 'chromToneTechnique', label: 'Chromatic Tone/Technique' },
+    { id: 'srTone', label: 'Sight Reading Tone' },
+    { id: 'srTempoRhythm', label: 'Sight Reading Tempo/Rhythm' },
+    { id: 'srPitchAccuracy', label: 'Sight Reading Pitch Accuracy/Intonation' },
+    { id: 'srArticulation', label: 'Sight Reading Articulation/Style' },
+    { id: 'srMusicality', label: 'Sight Reading Musicality' }
+  ];
+
+  const handleScoreChange = (category, value) => {
+    const numValue = parseInt(value);
+    if (numValue >= 0 && numValue <= 10 || value === '') {
+      setFormData(prev => ({
+        ...prev,
+        scores: {
+          ...prev.scores,
+          [category]: value
+        }
+      }));
+    }
+  };
+
+  const calculateTotal = (scores) => {
+    return Object.values(scores)
+      .reduce((sum, score) => sum + (parseInt(score) || 0), 0);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const totalScore = calculateTotal(formData.scores);
+    const newAudition = {
+      ...formData,
+      totalScore,
+      timestamp: new Date().toISOString()
+    };
+    
+    setAuditions(prev => [...prev, newAudition]);
+    
+    setFormData({
+      auditionNumber: '',
+      instrument: '',
+      comments: '',
+      scores: {
+        chromPitch: '',
+        chromRange: '',
+        chromTempo: '',
+        chromRhythm: '',
+        chromToneTechnique: '',
+        srTone: '',
+        srTempoRhythm: '',
+        srPitchAccuracy: '',
+        srArticulation: '',
+        srMusicality: ''
+      }
+    });
+  };
+
+  const getScoreColor = (score) => {
+    if (score === '') return 'bg-white';
+    const numScore = parseInt(score);
+    if (numScore >= 9) return 'bg-green-100';
+    if (numScore >= 7) return 'bg-blue-100';
+    if (numScore >= 5) return 'bg-yellow-100';
+    return 'bg-red-100';
+  };
+
+  const getRecapData = () => {
+    const groupedByInstrument = instruments.reduce((acc, instrument) => {
+      const instrumentAuditions = auditions
+        .filter(a => a.instrument === instrument)
+        .sort((a, b) => b.totalScore - a.totalScore);
+      if (instrumentAuditions.length > 0) {
+        acc[instrument] = instrumentAuditions;
+      }
+      return acc;
+    }, {});
+    return groupedByInstrument;
+  };
+
+  const RecapView = () => {
+    const groupedAuditions = getRecapData();
+    
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-bold text-purple-800">Audition Results Recap</h2>
+          <button
+            onClick={() => setShowRecap(false)}
+            className="text-sm text-purple-600 hover:text-purple-800"
+          >
+            Back to Form
+          </button>
+        </div>
+        
+        {Object.entries(groupedAuditions).map(([instrument, auditionList]) => (
+          <div key={instrument} className="bg-white rounded-lg p-4 shadow">
+            <h3 className="text-lg font-semibold text-purple-800 mb-3">{instrument}</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="bg-purple-50">
+                    <th className="px-4 py-2 text-left">Rank</th>
+                    <th className="px-4 py-2 text-left">Audition #</th>
+                    <th className="px-4 py-2 text-right">Total Score</th>
+                    <th className="px-4 py-2 text-left">Comments</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditionList.map((audition, index) => (
+                    <tr key={audition.auditionNumber} className="border-t">
+                      <td className="px-4 py-2">{index + 1}</td>
+                      <td className="px-4 py-2">{audition.auditionNumber}</td>
+                      <td className="px-4 py-2 text-right font-medium">
+                        {audition.totalScore}/100
+                      </td>
+                      <td className="px-4 py-2 text-sm text-gray-600 truncate max-w-xs">
+                        {audition.comments}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+        
+        {Object.keys(groupedAuditions).length === 0 && (
+          <div className="text-center text-gray-500 py-8">
+            No auditions recorded yet
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (showRecap) {
+    return (
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardContent>
+          <RecapView />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="w-full max-w-4xl mx-auto">
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-2xl font-bold text-purple-800">
+            Audition Management System
+          </CardTitle>
+          <button
+            onClick={() => setShowRecap(true)}
+            className="inline-flex items-center px-3 py-2 border border-purple-600 rounded-md text-sm font-medium text-purple-600 hover:bg-purple-50"
+          >
+            <ClipboardList className="h-5 w-5 mr-2" />
+            View Recap
+          </button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="auditionNumber">
+                Audition Number
+              </Label>
+              <input
+                type="text"
+                id="auditionNumber"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                value={formData.auditionNumber}
+                onChange={(e) => setFormData(prev => ({ ...prev, auditionNumber: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="instrument">
+                Instrument
+              </Label>
+              <select
+                id="instrument"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                value={formData.instrument}
+                onChange={(e) => setFormData(prev => ({ ...prev, instrument: e.target.value }))}
+                required
+              >
+                <option value="">Select Instrument</option>
+                {instruments.map(instrument => (
+                  <option key={instrument} value={instrument}>{instrument}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold text-purple-800 mb-4">Chromatic Scale Evaluation</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {scoreCategories.slice(0, 5).map(({ id, label }) => (
+                <div key={id}>
+                  <Label htmlFor={id}>
+                    {label} (0-10)
+                  </Label>
+                  <input
+                    type="number"
+                    id={id}
+                    min="0"
+                    max="10"
+                    className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 ${getScoreColor(formData.scores[id])}`}
+                    value={formData.scores[id]}
+                    onChange={(e) => handleScoreChange(id, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold text-blue-800 mb-4">Sight Reading Evaluation</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {scoreCategories.slice(5).map(({ id, label }) => (
+                <div key={id}>
+                  <Label htmlFor={id}>
+                    {label} (0-10)
+                  </Label>
+                  <input
+                    type="number"
+                    id={id}
+                    min="0"
+                    max="10"
+                    className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 ${getScoreColor(formData.scores[id])}`}
+                    value={formData.scores[id]}
+                    onChange={(e) => handleScoreChange(id, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <div 
+              className="flex items-center cursor-pointer mb-2" 
+              onClick={() => setIsCommentsExpanded(!isCommentsExpanded)}
+            >
+              <MessageSquare className="h-5 w-5 text-purple-600 mr-2" />
+              <Label className="cursor-pointer">
+                {isCommentsExpanded ? "Hide Comments" : "Show Comments"}
+              </Label>
+            </div>
+            
+            {isCommentsExpanded && (
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <Textarea
+                  placeholder="Enter comments about the auditioner's performance..."
+                  className="min-h-[100px] w-full"
+                  value={formData.comments}
+                  onChange={(e) => setFormData(prev => ({ ...prev, comments: e.target.value }))}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 flex justify-between items-center bg-white p-4 rounded-lg shadow">
+            <div className="text-xl font-bold text-purple-800">
+              Total Score: {calculateTotal(formData.scores)}/100
+            </div>
+            <button
+              type="submit"
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+            >
+              <Save className="h-5 w-5 mr-2" />
+              Save Scores
+            </button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default AuditionManagementSystem;
